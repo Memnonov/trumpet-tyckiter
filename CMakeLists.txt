@@ -6,7 +6,7 @@ project(trumpet_tyckiter)
 # PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 # PKG_SEARCH_MODULE(SDL2IMAGE REQUIRED SDL2_image)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image)
+pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_image SDL2_mixer)
 
 # Include these directories?
 include_directories(

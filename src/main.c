@@ -10,13 +10,15 @@
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 // Main function!
 int main(void) {
   // MY CONSTANTS
-  const Uint32 INIT_FLAGS = SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS;
+  const Uint32 INIT_FLAGS =
+    SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO;
   const Uint32 RENDERER_FLAGS =
       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
   const int WINDOW_WIDTH = 640;
