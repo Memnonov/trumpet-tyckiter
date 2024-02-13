@@ -58,7 +58,7 @@ int main(void) {
   // täähän pyrii nyt vaan, jos pwd on juuri...
   const char *VALVES_PATH = "resources/trumpet_valves.png";
   const char *KEY_PATH = "resources/trumpet_key.png";
-  const char *SOUND_F4 = "resources/sound/F4.mp3";
+  const char *SOUND_F4 = "resources/sound/6 C4.wav";
 
   // Initialize Game.
   Game game = {
