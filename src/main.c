@@ -1,16 +1,17 @@
 /* Copyright [2024] Mikko Memonen */
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_scancode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
-#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,7 +19,7 @@
 int main(void) {
   // MY CONSTANTS
   const Uint32 INIT_FLAGS =
-    SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO;
+      SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO;
   const Uint32 RENDERER_FLAGS =
       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
   const int WINDOW_WIDTH = 640;
@@ -27,10 +28,22 @@ int main(void) {
   // täähän pyrii nyt vaan, jos pwd on juuri...
   const char *VALVES_PATH = "resources/trumpet_valves.png";
   const char *KEY_PATH = "resources/trumpet_key.png";
+  const char *SOUND_FANFARE = "resources/trumpet_fanfare.wav";
 
   // Initialize SDL.
   if (SDL_Init(INIT_FLAGS)) {
     printf("\nCouldn't initialize SDL: %s", SDL_GetError());
+    return EXIT_FAILURE;
+  }
+
+  /* SDL_mixer will handle initialization on the fly!
+   * You can use Mix_Init() with flags to ensure that a
+   * type of audio can be played.                         */
+
+  // Open the default audio device. Initializes the mixer too(?)
+  if (Mix_OpenAudio(48000, AUDIO_S16SYS, 2, 2048) == -1) {
+    printf("\nCouldn't open audio device: %s", SDL_GetError());
+    SDL_Quit();
     return EXIT_FAILURE;
   }
 
@@ -41,6 +54,7 @@ int main(void) {
                        SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
   if (g_window == NULL) {
     printf("\nCouldn't create window: %s", SDL_GetError());
+    SDL_CloseAudio();
     SDL_Quit();
     return EXIT_FAILURE;
   }
@@ -51,6 +65,7 @@ int main(void) {
   if (g_renderer == NULL) {
     printf("\nCouldn't create renderer: %s", SDL_GetError());
     SDL_DestroyWindow(g_window);
+    SDL_CloseAudio();
     SDL_Quit();
     return EXIT_FAILURE;
   }
@@ -62,9 +77,18 @@ int main(void) {
   trumpet_key_texture = IMG_LoadTexture(g_renderer, KEY_PATH);
   if (trumpet_valves_texture == NULL) {
     printf("Couldn't load trumpet valves!");
+    SDL_DestroyWindow(g_window);
+    SDL_DestroyRenderer(g_renderer);
+    SDL_CloseAudio();
+    SDL_Quit();
   }
   if (trumpet_key_texture == NULL) {
     printf("Couldn't load trumpet keys!");
+    SDL_DestroyWindow(g_window);
+    SDL_DestroyRenderer(g_renderer);
+    SDL_DestroyTexture(trumpet_valves_texture);
+    SDL_CloseAudio();
+    SDL_Quit();
   }
   const unsigned int valve_press_length = 40;
   const unsigned int key_gap = 95;
@@ -75,22 +99,35 @@ int main(void) {
   SDL_Rect key_1_rect;
   SDL_Rect key_2_rect;
   SDL_Rect key_3_rect;
-  SDL_QueryTexture(trumpet_key_texture, NULL, NULL,
-                   &key_1_rect.w, &key_1_rect.h);
-  SDL_QueryTexture(trumpet_key_texture, NULL, NULL,
-                   &key_2_rect.w, &key_2_rect.h);
-  SDL_QueryTexture(trumpet_key_texture, NULL, NULL,
-                   &key_3_rect.w, &key_3_rect.h);
+  SDL_QueryTexture(trumpet_key_texture, NULL, NULL, &key_1_rect.w,
+                   &key_1_rect.h);
+  SDL_QueryTexture(trumpet_key_texture, NULL, NULL, &key_2_rect.w,
+                   &key_2_rect.h);
+  SDL_QueryTexture(trumpet_key_texture, NULL, NULL, &key_3_rect.w,
+                   &key_3_rect.h);
   key_1_rect.x = 170;
   key_1_rect.y = 150;
-  SDL_QueryTexture(trumpet_key_texture, NULL, NULL,
-                   &key_1_rect.w, &key_1_rect.h);
+  SDL_QueryTexture(trumpet_key_texture, NULL, NULL, &key_1_rect.w,
+                   &key_1_rect.h);
   key_2_rect.x = key_1_rect.x + key_gap;
   key_2_rect.y = 150;
-  SDL_QueryTexture(trumpet_key_texture, NULL, NULL,
-                   &key_1_rect.w, &key_1_rect.h);
+  SDL_QueryTexture(trumpet_key_texture, NULL, NULL, &key_1_rect.w,
+                   &key_1_rect.h);
   key_3_rect.x = key_2_rect.x + key_gap;
   key_3_rect.y = 150;
+
+  // Load a sound effect.
+  Mix_Chunk *sound_fanfare = Mix_LoadWAV(SOUND_FANFARE);
+  if (sound_fanfare == NULL) {
+    printf("Couldn't load fanfare : (  (%s))", SDL_GetError());
+    SDL_DestroyWindow(g_window);
+    SDL_DestroyRenderer(g_renderer);
+    SDL_DestroyTexture(trumpet_valves_texture);
+    SDL_DestroyTexture(trumpet_key_texture);
+    SDL_CloseAudio();
+    SDL_Quit();
+    return EXIT_FAILURE;
+  }
 
   unsigned int stop_request = 0;
   unsigned int key_1_pressed = 0;
@@ -127,6 +164,9 @@ int main(void) {
             key_3_pressed = 1;
           }
           break;
+        case SDL_SCANCODE_A:
+          Mix_PlayChannel(1, sound_fanfare, 0);
+          break;
         }
         break;
 
@@ -135,8 +175,8 @@ int main(void) {
         switch (event.key.keysym.scancode) {
         case SDL_SCANCODE_LEFT:
           if (key_1_pressed) {
-          key_1_rect.y -= valve_press_length;
-          key_1_pressed = 0;
+            key_1_rect.y -= valve_press_length;
+            key_1_pressed = 0;
           }
           break;
         case SDL_SCANCODE_DOWN:
@@ -164,19 +204,19 @@ int main(void) {
     // Add textures to buffer.
     // Keys
     if (SDL_RenderCopy(g_renderer, trumpet_key_texture,
-                       NULL,  // use the whole image as source
+                       NULL,         // use the whole image as source
                        &key_1_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
     }
     if (SDL_RenderCopy(g_renderer, trumpet_key_texture,
-                       NULL,  // use the whole image as source
+                       NULL,         // use the whole image as source
                        &key_2_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
     }
     if (SDL_RenderCopy(g_renderer, trumpet_key_texture,
-                       NULL,  // use the whole image as source
+                       NULL,         // use the whole image as source
                        &key_3_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
@@ -196,7 +236,6 @@ int main(void) {
     SDL_Delay(1000 / 60);
   }
 
-
   // // Wait to see the results.
   // SDL_Delay(3000);
 
@@ -205,6 +244,8 @@ int main(void) {
   SDL_DestroyRenderer(g_renderer);
   SDL_DestroyTexture(trumpet_valves_texture);
   SDL_DestroyTexture(trumpet_key_texture);
+  Mix_FreeChunk(sound_fanfare);
+  SDL_CloseAudio();
   SDL_Quit();
   printf("Program exited succesfully!");
 
