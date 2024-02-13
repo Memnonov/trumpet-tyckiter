@@ -26,11 +26,11 @@ typedef struct {
   SDL_Rect key_1_rect;
   SDL_Rect key_2_rect;
   SDL_Rect key_3_rect;
-} GAME_Trumpet;
+} Game_Trumpet;
 
 typedef struct {
   int place_holder;
-} GAME_Audio;
+} Game_Audio;
 
 // Struct for keeping track of initialized modules, windows etc.
 typedef struct {
@@ -38,12 +38,12 @@ typedef struct {
   int MIX_Init;
   SDL_Window *window;
   SDL_Renderer *renderer;
-} GAME;
+} Game;
 
 // Automagic cleanup
-void GAME_QuitAll(GAME *game, GAME_Trumpet *trumpet, GAME_Audio *audio);
+void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio);
 // Put the keys in their place
-void GAME_PlaceTrumpetKeys(GAME_Trumpet *trumpet);
+void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet);
 
 // Main function!
 int main(void) {
@@ -60,19 +60,19 @@ int main(void) {
   const char *KEY_PATH = "resources/trumpet_key.png";
   const char *SOUND_F4 = "resources/sound/F4.mp3";
 
-  // Initialize GAME.
-  GAME game = {
+  // Initialize Game.
+  Game game = {
       .SDL_Init = -1, .MIX_Init = -1, .window = NULL, .renderer = NULL};
 
   // Initialize THE HORN!
-  GAME_Trumpet trumpet = {.valves_text = NULL,
+  Game_Trumpet trumpet = {.valves_text = NULL,
                           .keys_text = NULL,
                           .key_1_pressed = 0,
                           .key_2_pressed = 0,
                           .key_3_pressed = 0};
 
-  // Initialize GAME_Audio.
-  GAME_Audio audio = {
+  // Initialize Game_Audio.
+  Game_Audio audio = {
     .place_holder = 666  // This is sick, but cool...
   };
 
@@ -93,7 +93,7 @@ int main(void) {
   // 0 if OK
   if (game.MIX_Init) {
     printf("\nCouldn't open audio device: %s", SDL_GetError());
-    // TODO: Have these checks use the GAME_QuitAll() function!
+    // TODO: Have these checks use the Game_QuitAll() function!
     SDL_Quit();
     return EXIT_FAILURE;
   }
@@ -120,7 +120,7 @@ int main(void) {
   }
 
   // Create the trumpet valves and keys textures.
-  // SDL_Texture *trumpet_valves_texture = NULL;  // Now in the GAME_Trumpet
+  // SDL_Texture *trumpet_valves_texture = NULL;  // Now in the Game_Trumpet
   // struct SDL_Texture *trumpet_key_texture = NULL;     // These too
   trumpet.valves_text = IMG_LoadTexture(game.renderer, VALVES_PATH);
   trumpet.keys_text = IMG_LoadTexture(game.renderer, KEY_PATH);
@@ -140,7 +140,7 @@ int main(void) {
     SDL_Quit();
   }
 
-  GAME_PlaceTrumpetKeys(&trumpet);
+  Game_PlaceTrumpetKeys(&trumpet);
 
   // Load a sound effect.
   Mix_Chunk *sound_fanfare = Mix_LoadWAV(SOUND_F4);
@@ -261,16 +261,16 @@ int main(void) {
   }
 
   Mix_FreeChunk(sound_fanfare);
-  GAME_QuitAll(&game, &trumpet, &audio);
+  Game_QuitAll(&game, &trumpet, &audio);
   printf("Program exited succesfully!");
 
   return EXIT_SUCCESS;
 }
 
-/* void GAME_QuitAll(void) (might need arguments eventually!)
+/* void Game_QuitAll(void) (might need arguments eventually!)
  *
  * Conveniently closes all initiated SDL2 modules. */
-void GAME_QuitAll(GAME *game, GAME_Trumpet *trumpet, GAME_Audio *audio) {
+void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio) {
   // SDL_init       returns 0 if OK (SDL_Quit() deals with this?)
   // Mix_OpenAudio  returns 0 if OK
   printf("\nClosing audio");
@@ -291,7 +291,7 @@ void GAME_QuitAll(GAME *game, GAME_Trumpet *trumpet, GAME_Audio *audio) {
     printf("\n  Renderer destroyed!");
   }
 
-  // GAME_Trumpet has pointers to valves_text and keys_text
+  // Game_Trumpet has pointers to valves_text and keys_text
   printf("\nDestroying keys");
   if (trumpet->keys_text != NULL) {
     SDL_DestroyTexture(trumpet->keys_text);
@@ -315,10 +315,10 @@ void GAME_QuitAll(GAME *game, GAME_Trumpet *trumpet, GAME_Audio *audio) {
   }
 }
 
-/* void GAME_PlaceTrumpetKeys(GAME_Trumpet *trumpet)
+/* void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet)
  *
  * Initializes the rectangles for the key locations. */
-void GAME_PlaceTrumpetKeys(GAME_Trumpet *trumpet) {
+void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet) {
   const unsigned int key_gap = 95;
   SDL_QueryTexture(trumpet->keys_text, NULL, NULL, &trumpet->key_1_rect.w,
                    &trumpet->key_1_rect.h);
