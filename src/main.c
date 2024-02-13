@@ -14,6 +14,7 @@
 #include <SDL2/SDL_video.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Struct for the trumpet: graphics and keys pressed etc.
 // Also the SDL_Rects for the key rectangles.
@@ -40,10 +41,14 @@ typedef struct {
   SDL_Renderer *renderer;
 } Game;
 
-// Automagic cleanup
+// Automagic cleanup.
 void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio);
-// Put the keys in their place
+
+// Put the keys in their place.
 void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet);
+
+// Load notes into the horn.
+int Game_LoadNotes(Game_Audio *audio, const char *path);
 
 // Main function!
 int main(void) {
@@ -54,10 +59,10 @@ int main(void) {
       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
   const int WINDOW_WIDTH = 640;
   const int WINDOW_HEIGHT = 480;
-  // TODO(mikko): hoija tää käyttään suhteellista polokua!
-  // täähän pyrii nyt vaan, jos pwd on juuri...
+  // CWD has to be root, this should be improved
   const char *VALVES_PATH = "resources/trumpet_valves.png";
   const char *KEY_PATH = "resources/trumpet_key.png";
+  const char *RESOURCES_SOUND_PATH = "resources/sound/";
   const char *TEST_SOUND_F4 = "resources/sound/6.wav";  // for testing
 
   // Initialize Game.
@@ -153,6 +158,8 @@ int main(void) {
     SDL_Quit();
     return EXIT_FAILURE;
   }
+
+  Game_LoadNotes(&audio, RESOURCES_SOUND_PATH);
 
   unsigned int stop_request = 0;
   const unsigned int valve_press_length = 40;
@@ -260,7 +267,7 @@ int main(void) {
   }
 
   Game_QuitAll(&game, &trumpet, &audio);
-  printf("Program exited succesfully!");
+  printf("\nProgram exited succesfully!");
 
   return EXIT_SUCCESS;
 }
@@ -301,13 +308,14 @@ void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio) {
     printf("\n  Valves destroyed!");
   }
 
-  printf("\nDestroying audio...");
-  if (audio->notes[0] != NULL) {
-    Mix_FreeChunk(audio->notes[0]);
-    printf("\n  Audio is rekt!");
+  // TODO: Fix magic number 19!
+  printf("\nFreeing Mix Chunks..");
+  for (int i = 0; i < 19; i++) {
+    if (audio->notes[i] != NULL) {
+      Mix_FreeChunk(audio->notes[i]);
+      printf("\n  Freed chunk %d", i);
+    }
   }
-
-  // TODO: Destroy sound!
 
   if (game->MIX_Init == 0) {
     Mix_Quit();
@@ -339,4 +347,32 @@ void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet) {
   SDL_QueryTexture(trumpet->keys_text, NULL, NULL, &trumpet->key_1_rect.w,
                    &trumpet->key_1_rect.h);
   trumpet->key_3_rect.x = trumpet->key_2_rect.x + key_gap;
+}
+
+/* int Game_LoadNotes(Game_Audio *audio)
+ *
+ * Loads the trumpet noises into an array of *Mix_Chunk 
+ * in the Game_Audio struct
+ *
+ * return 0 if OK, else -1 */
+int Game_LoadNotes(Game_Audio *audio, const char *path) {
+  const int FPATH_BUFFER_SIZE = 32;
+  const int FNAME_BUFFER_SIZE = 8;
+  char filepath[FPATH_BUFFER_SIZE];
+  char filename[FNAME_BUFFER_SIZE];
+  printf("\nLoading notes...");
+  for (int i = 0; i < 19; i++) {
+    strcpy(filepath, path);
+    snprintf(filename, FNAME_BUFFER_SIZE, "%d", i);
+    strcat(filepath, filename);
+    strcat(filepath, ".wav");
+    printf("\n  Loading filepath: %s", filepath);
+    audio->notes[i] = Mix_LoadWAV(filepath);
+    if (audio->notes[i] == NULL) {
+      printf("\n  Error loading: %s", filepath);
+      return -1;
+    }
+  }
+  printf("Notes done!");
+  return 0;
 }
