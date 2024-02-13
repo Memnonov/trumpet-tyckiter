@@ -27,6 +27,11 @@ typedef struct {
   SDL_Rect key_1_rect;
   SDL_Rect key_2_rect;
   SDL_Rect key_3_rect;
+  unsigned int blow_force;     // air velocity which determines pitch
+  unsigned int key_a_pressed;  // which is controlled by a, b and d
+  unsigned int key_s_pressed;
+  unsigned int key_d_pressed;
+  unsigned int doot;  // 1 if a doot should come out, -1 to stop
 } Game_Trumpet;
 
 typedef struct {
@@ -49,6 +54,12 @@ void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet);
 
 // Load notes into the horn.
 int Game_LoadNotes(Game_Audio *audio, const char *path);
+
+// Play the trumpet!
+void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio);
+
+// Check if a note is playing.
+int Game_CheckIfPlaying(Game_Trumpet *trumpet);
 
 // Main function!
 int main(void) {
@@ -75,7 +86,6 @@ int main(void) {
                           .key_1_pressed = 0,
                           .key_2_pressed = 0,
                           .key_3_pressed = 0};
-
 
   // Initialize SDL.
   game.SDL_Init = SDL_Init(INIT_FLAGS);
@@ -145,9 +155,7 @@ int main(void) {
 
   // Load a sound effect.
   // Initialize the notes.
-  Game_Audio audio = {
-    .notes[0] = Mix_LoadWAV(TEST_SOUND_F4)
-  };
+  Game_Audio audio = {.notes[0] = Mix_LoadWAV(TEST_SOUND_F4)};
   if (audio.notes[0] == NULL) {
     printf("Couldn't load DOOTs : (  (%s))", SDL_GetError());
     SDL_DestroyWindow(game.window);
@@ -177,29 +185,49 @@ int main(void) {
       case SDL_KEYDOWN:
         switch (event.key.keysym.scancode) {
         case SDL_SCANCODE_LEFT:
-          if (!trumpet.key_1_pressed) {
+          if (!trumpet.key_1_pressed) {  // TODO: Is this checking necessary?
             trumpet.key_1_rect.y += valve_press_length;
             trumpet.key_1_pressed = 1;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
           break;
         case SDL_SCANCODE_DOWN:
           if (!trumpet.key_2_pressed) {
             trumpet.key_2_rect.y += valve_press_length;
             trumpet.key_2_pressed = 1;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
           break;
         case SDL_SCANCODE_RIGHT:
           if (!trumpet.key_3_pressed) {
             trumpet.key_3_rect.y += valve_press_length;
             trumpet.key_3_pressed = 1;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
           break;
         case SDL_SCANCODE_A:
-          Mix_PlayChannel(1, audio.notes[0], 0);
+          if (!trumpet.key_a_pressed) {
+            trumpet.key_a_pressed = 1;
+            trumpet.blow_force = 6;
+            trumpet.doot = 1;
+          }
+          break;
+        case SDL_SCANCODE_S:
+          if (!trumpet.key_s_pressed) {
+            trumpet.key_s_pressed = 1;
+            trumpet.blow_force = 13;
+            trumpet.doot = 1;
+          }
+          break;
+        case SDL_SCANCODE_D:
+          if (!trumpet.key_d_pressed) {
+          trumpet.key_d_pressed = 1;
+          trumpet.blow_force = 18;
+          trumpet.doot = 1;
+          }
           break;
         }
         break;
-
       // KEYUP switch
       case SDL_KEYUP:
         switch (event.key.keysym.scancode) {
@@ -207,19 +235,31 @@ int main(void) {
           if (trumpet.key_1_pressed) {
             trumpet.key_1_rect.y -= valve_press_length;
             trumpet.key_1_pressed = 0;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
           break;
         case SDL_SCANCODE_DOWN:
           if (trumpet.key_2_pressed) {
             trumpet.key_2_rect.y -= valve_press_length;
             trumpet.key_2_pressed = 0;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
           break;
         case SDL_SCANCODE_RIGHT:
           if (trumpet.key_3_pressed) {
             trumpet.key_3_rect.y -= valve_press_length;
             trumpet.key_3_pressed = 0;
+            trumpet.doot = Game_CheckIfPlaying(&trumpet);
           }
+          break;
+        case SDL_SCANCODE_A:
+          trumpet.key_a_pressed = 0;
+          break;
+        case SDL_SCANCODE_S:
+          trumpet.key_s_pressed = 0;
+          break;
+        case SDL_SCANCODE_D:
+          trumpet.key_d_pressed = 0;
           break;
         }
         break;
@@ -227,12 +267,16 @@ int main(void) {
     }
     // End of event loop.
 
+    // Handle the music.
+    Game_PlayTrumpet(&trumpet, &audio);
+
     // Draw black backgound.
     SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
     SDL_RenderClear(game.renderer);
 
     // Add textures to buffer.
     // Keys
+    // TODO: Make this less dumb.
     if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
                        NULL,                 // use the whole image as source
                        &trumpet.key_1_rect)  // stretch to fit the whole window
@@ -351,7 +395,7 @@ void Game_PlaceTrumpetKeys(Game_Trumpet *trumpet) {
 
 /* int Game_LoadNotes(Game_Audio *audio)
  *
- * Loads the trumpet noises into an array of *Mix_Chunk 
+ * Loads the trumpet noises into an array of *Mix_Chunk
  * in the Game_Audio struct
  *
  * return 0 if OK, else -1 */
@@ -375,4 +419,35 @@ int Game_LoadNotes(Game_Audio *audio, const char *path) {
   }
   printf("Notes done!");
   return 0;
+}
+
+/* int Game_CheckIfPlaying(Game_Trumpet *trumpet)
+ *
+ * Returns 1 if a note should be playing (a, s or d pressed)
+ * Used for slurring notes (changing fingering while playing a note) */
+int Game_CheckIfPlaying(Game_Trumpet *trumpet) {
+  if (trumpet->key_a_pressed + trumpet->key_s_pressed + trumpet->key_d_pressed) {
+    return 1;
+  }
+  return 0;
+}
+
+
+/* void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio)
+ *
+ * Handles the playing and stopping notes depenging on the
+ * trumpet state. */
+void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio) {
+  if (trumpet->key_a_pressed + trumpet->key_s_pressed +
+          trumpet->key_d_pressed ==
+      0) {
+    Mix_FadeOutChannel(1, 1);
+    return;
+  }
+  if (trumpet->doot) {
+    int note = trumpet->blow_force - trumpet->key_1_pressed * 2 -
+               trumpet->key_2_pressed - trumpet->key_3_pressed * 3;
+    Mix_FadeInChannel(1, audio->notes[note], 0, 1);
+    trumpet->doot = 0;
+  }
 }
