@@ -259,7 +259,6 @@ int main(void) {
     SDL_Delay(1000 / 60);
   }
 
-  Mix_FreeChunk(audio.notes[0]);
   Game_QuitAll(&game, &trumpet, &audio);
   printf("Program exited succesfully!");
 
