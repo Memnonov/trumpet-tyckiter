@@ -15,6 +15,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Struct for keeping track of initialized modules, windows etc.
+typedef struct {
+  int SDL_Init;
+  int MIX_Init;
+  SDL_Window *window;
+  SDL_Renderer *renderer;
+} GAME;
+
 // Struct for the trumpet: graphics and keys pressed etc.
 // Also the SDL_Rects for the key rectangles.
 typedef struct {
@@ -28,7 +36,7 @@ typedef struct {
   SDL_Rect key_3_rect;
 } GAME_Trumpet;
 
-void GAME_QuitAll(void);  // automagic cleanup
+void GAME_QuitAll(void);                            // automagic cleanup
 void GAME_PlaceTrumpetKeys(GAME_Trumpet *trumpet);  // Init the valve rectangles
 
 // Main function!
@@ -46,6 +54,9 @@ int main(void) {
   const char *KEY_PATH = "resources/trumpet_key.png";
   const char *SOUND_FANFARE = "resources/trumpet_fanfare.wav";
 
+  // Initialize GAME.
+  GAME game = {.SDL_Init = 0, .MIX_Init = 0, .window = NULL, .renderer = NULL};
+
   // Initialize THE HORN!
   GAME_Trumpet trumpet = {.valves_text = NULL,
                           .keys_text = NULL,
@@ -54,7 +65,9 @@ int main(void) {
                           .key_3_pressed = 0};
 
   // Initialize SDL.
-  if (SDL_Init(INIT_FLAGS)) {
+  game.SDL_Init = SDL_Init(INIT_FLAGS);
+  // 0 if OK
+  if (game.SDL_Init) {
     printf("\nCouldn't initialize SDL: %s", SDL_GetError());
     return EXIT_FAILURE;
   }
@@ -64,18 +77,19 @@ int main(void) {
    * type of audio can be played.                         */
 
   // Open the default audio device. Initializes the mixer too(?)
-  if (Mix_OpenAudio(48000, AUDIO_S16SYS, 2, 2048) == -1) {
+  game.MIX_Init = Mix_OpenAudio(48000, AUDIO_S16SYS, 2, 2048);
+      // 0 if OK
+      if (game.MIX_Init) {
     printf("\nCouldn't open audio device: %s", SDL_GetError());
     SDL_Quit();
     return EXIT_FAILURE;
   }
 
   // Create the game window.
-  SDL_Window *g_window = NULL;
-  g_window =
+  game.window =
       SDL_CreateWindow("trumpet_tyckiter", SDL_WINDOWPOS_CENTERED,
                        SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
-  if (g_window == NULL) {
+  if (game.window == NULL) {
     printf("\nCouldn't create window: %s", SDL_GetError());
     SDL_CloseAudio();
     SDL_Quit();
@@ -83,11 +97,10 @@ int main(void) {
   }
 
   // Create a renderer.
-  SDL_Renderer *g_renderer = NULL;
-  g_renderer = SDL_CreateRenderer(g_window, -1, RENDERER_FLAGS);
-  if (g_renderer == NULL) {
+  game.renderer = SDL_CreateRenderer(game.window, -1, RENDERER_FLAGS);
+  if (game.renderer == NULL) {
     printf("\nCouldn't create renderer: %s", SDL_GetError());
-    SDL_DestroyWindow(g_window);
+    SDL_DestroyWindow(game.window);
     SDL_CloseAudio();
     SDL_Quit();
     return EXIT_FAILURE;
@@ -96,19 +109,20 @@ int main(void) {
   // Create the trumpet valves and keys textures.
   // SDL_Texture *trumpet_valves_texture = NULL;  // Now in the GAME_Trumpet
   // struct SDL_Texture *trumpet_key_texture = NULL;     // These too
-  trumpet.valves_text = IMG_LoadTexture(g_renderer, VALVES_PATH);
-  trumpet.keys_text = IMG_LoadTexture(g_renderer, KEY_PATH);
+  trumpet.valves_text = IMG_LoadTexture(
+      game.renderer, VALVES_PATH);
+  trumpet.keys_text = IMG_LoadTexture(game.renderer, KEY_PATH);
   if (trumpet.valves_text == NULL) {
     printf("Couldn't load trumpet valves!");
-    SDL_DestroyWindow(g_window);
-    SDL_DestroyRenderer(g_renderer);
+    SDL_DestroyWindow(game.window);
+    SDL_DestroyRenderer(game.renderer);
     SDL_CloseAudio();
     SDL_Quit();
   }
   if (trumpet.keys_text == NULL) {
     printf("Couldn't load trumpet keys!");
-    SDL_DestroyWindow(g_window);
-    SDL_DestroyRenderer(g_renderer);
+    SDL_DestroyWindow(game.window);
+    SDL_DestroyRenderer(game.renderer);
     SDL_DestroyTexture(trumpet.valves_text);
     SDL_CloseAudio();
     SDL_Quit();
@@ -120,8 +134,8 @@ int main(void) {
   Mix_Chunk *sound_fanfare = Mix_LoadWAV(SOUND_FANFARE);
   if (sound_fanfare == NULL) {
     printf("Couldn't load fanfare : (  (%s))", SDL_GetError());
-    SDL_DestroyWindow(g_window);
-    SDL_DestroyRenderer(g_renderer);
+    SDL_DestroyWindow(game.window);
+    SDL_DestroyRenderer(game.renderer);
     SDL_DestroyTexture(trumpet.keys_text);
     SDL_DestroyTexture(trumpet.valves_text);
     SDL_CloseAudio();
@@ -196,31 +210,31 @@ int main(void) {
     // End of event loop.
 
     // Draw black backgound.
-    SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
-    SDL_RenderClear(g_renderer);
+    SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
+    SDL_RenderClear(game.renderer);
 
     // Add textures to buffer.
     // Keys
-    if (SDL_RenderCopy(g_renderer, trumpet.keys_text,
+    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
                        NULL,                 // use the whole image as source
                        &trumpet.key_1_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
     }
-    if (SDL_RenderCopy(g_renderer, trumpet.keys_text,
+    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
                        NULL,                 // use the whole image as source
                        &trumpet.key_2_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
     }
-    if (SDL_RenderCopy(g_renderer, trumpet.keys_text,
+    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
                        NULL,                 // use the whole image as source
                        &trumpet.key_3_rect)  // stretch to fit the whole window
     ) {
       printf("Error copying keys: %s", SDL_GetError());
     }
     // Valves
-    if (SDL_RenderCopy(g_renderer, trumpet.valves_text,
+    if (SDL_RenderCopy(game.renderer, trumpet.valves_text,
                        NULL,  // use the whole image as source
                        NULL)  // stretch to fit the whole window
     ) {
@@ -228,7 +242,7 @@ int main(void) {
     }
 
     // Show buffer.
-    SDL_RenderPresent(g_renderer);
+    SDL_RenderPresent(game.renderer);
 
     // Emulate 60fps
     SDL_Delay(1000 / 60);
@@ -238,8 +252,8 @@ int main(void) {
   // SDL_Delay(3000);
 
   // Close all
-  SDL_DestroyWindow(g_window);
-  SDL_DestroyRenderer(g_renderer);
+  SDL_DestroyWindow(game.window);
+  SDL_DestroyRenderer(game.renderer);
   SDL_DestroyTexture(trumpet.valves_text);
   SDL_DestroyTexture(trumpet.keys_text);
   Mix_FreeChunk(sound_fanfare);
@@ -257,6 +271,8 @@ void GAME_QuitAll(void) {
   // SDL_init       returns 0 if OK
   // Mix_OpenAudio  returns 0 if OK
   //
+  // GAME_Trumpet has pointers to valves_text and keys_text
+  // Sounds need to be destroyed.
 
   SDL_Quit();
 }
