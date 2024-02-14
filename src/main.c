@@ -19,6 +19,7 @@
 typedef struct {
   SDL_Texture *valves_text;
   SDL_Texture *keys_text;
+  const unsigned int valve_press_length;
   unsigned int key_1_pressed;
   unsigned int key_2_pressed;
   unsigned int key_3_pressed;
@@ -87,6 +88,7 @@ int main(void) {
       .SDL_Init = -1, .MIX_Init = -1, .window = NULL, .renderer = NULL};
   Game_Trumpet trumpet = {.valves_text = NULL,
                           .keys_text = NULL,
+                          .valve_press_length = 40,
                           .key_1_pressed = 0,
                           .key_2_pressed = 0,
                           .key_3_pressed = 0};
@@ -155,7 +157,6 @@ int main(void) {
 
   unsigned int stop_request = 0;
   unsigned int error = 0;
-  const unsigned int valve_press_length = 40;
 
   // Main game loop starts.
   while (!stop_request) {
@@ -371,25 +372,24 @@ void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer) {
  *
  * Handles SDL_KEYDOWN events. */
 void Game_HandleKeyDown(SDL_Event event, Game_Trumpet *trumpet) {
-  const unsigned int valve_press_length = 40;
   switch (event.key.keysym.scancode) {
   case SDL_SCANCODE_LEFT:
     if (!trumpet->key_1_pressed) {  // TODO: Is this checking necessary?
-      trumpet->key_1_rect.y += valve_press_length;
+      trumpet->key_1_rect.y += trumpet->valve_press_length;
       trumpet->key_1_pressed = 1;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
     break;
   case SDL_SCANCODE_DOWN:
     if (!trumpet->key_2_pressed) {
-      trumpet->key_2_rect.y += valve_press_length;
+      trumpet->key_2_rect.y += trumpet->valve_press_length;
       trumpet->key_2_pressed = 1;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
     break;
   case SDL_SCANCODE_RIGHT:
     if (!trumpet->key_3_pressed) {
-      trumpet->key_3_rect.y += valve_press_length;
+      trumpet->key_3_rect.y += trumpet->valve_press_length;
       trumpet->key_3_pressed = 1;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
@@ -423,26 +423,25 @@ void Game_HandleKeyDown(SDL_Event event, Game_Trumpet *trumpet) {
 /* void Game_HandleKeyUp(Game_Trumpet *trumpet)
  *
  * Handles SDL_KEYUP events. */
-void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet) {
-  const unsigned int valve_press_length = 40;
+void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet) {         
   switch (event.key.keysym.scancode) {
   case SDL_SCANCODE_LEFT:
     if (trumpet->key_1_pressed) {
-      trumpet->key_1_rect.y -= valve_press_length;
+      trumpet->key_1_rect.y -= trumpet->valve_press_length;
       trumpet->key_1_pressed = 0;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
     break;
   case SDL_SCANCODE_DOWN:
     if (trumpet->key_2_pressed) {
-      trumpet->key_2_rect.y -= valve_press_length;
+      trumpet->key_2_rect.y -= trumpet->valve_press_length;
       trumpet->key_2_pressed = 0;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
     break;
   case SDL_SCANCODE_RIGHT:
     if (trumpet->key_3_pressed) {
-      trumpet->key_3_rect.y -= valve_press_length;
+      trumpet->key_3_rect.y -= trumpet->valve_press_length;
       trumpet->key_3_pressed = 0;
       trumpet->doot = Game_CheckIfPlaying(trumpet);
     }
