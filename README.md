@@ -1,6 +1,6 @@
 TRUMPET TYCKITER SIMULATOR
 ==========================
-![alt text](screenshots/gameplay.png
+![alt text](screenshots/gameplay.png)
 Now you can play the trumpet too.
 Made using SDL2.
 Doot doot doot.  
