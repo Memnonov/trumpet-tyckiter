@@ -34,7 +34,8 @@ typedef struct {
 } Game_Trumpet;
 
 typedef struct {
-  Mix_Chunk *notes[19];
+  const unsigned int notes_amount;
+  Mix_Chunk **notes;
 } Game_Audio;
 
 // Struct for keeping track of initialized modules, windows etc.
@@ -148,8 +149,11 @@ int main(void) {
   Game_PlaceTrumpetKeys(&trumpet);
 
   // Initialize the notes.
-  Game_Audio audio;
-  if (Game_LoadNotes(&audio, RESOURCES_SOUND_PATH)) {
+  const unsigned int NBR_OF_NOTES = 19;
+  Game_Audio audio = {.notes_amount =  NBR_OF_NOTES,
+                      .notes =
+                          (Mix_Chunk **)calloc(NBR_OF_NOTES, sizeof(Mix_Chunk *))};
+  if (audio.notes == NULL || Game_LoadNotes(&audio, RESOURCES_SOUND_PATH)) {
     printf("\nCouldn't load DOOTS :( (%s))", SDL_GetError());
     Game_QuitAll(&game, &trumpet, NULL);
     return EXIT_FAILURE;
@@ -243,15 +247,15 @@ void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio) {
     }
   }
 
-  if (audio != NULL) {
-    // TODO: Fix magic number 19!
+  if (audio != NULL && audio->notes != NULL) {
     printf("\nFreeing Mix Chunks..");
-    for (int i = 0; i < 19; i++) {
-      if (audio->notes[i] != NULL) {
+    for (int i = 0; i < audio->notes_amount; i++) {
+      if (&audio->notes[i] != NULL) {
         Mix_FreeChunk(audio->notes[i]);
         printf("\n  Freed chunk %d", i);
       }
     }
+    free(audio->notes);
   }
 
   if (game->MIX_Init == 0) {
@@ -298,7 +302,7 @@ int Game_LoadNotes(Game_Audio *audio, const char *path) {
   char filepath[FPATH_BUFFER_SIZE];
   char filename[FNAME_BUFFER_SIZE];
   printf("\nLoading notes...");
-  for (int i = 0; i < 19; i++) {
+  for (int i = 0; i < audio->notes_amount; i++) {
     strcpy(filepath, path);
     snprintf(filename, FNAME_BUFFER_SIZE, "%d", i);
     strcat(filepath, filename);
@@ -352,7 +356,7 @@ void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio) {
 void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer) {
   // Keys
   SDL_Rect *keys[3] = {&trumpet->key_1_rect, &trumpet->key_2_rect,
-                      &trumpet->key_3_rect};
+                       &trumpet->key_3_rect};
 
   for (int i = 0; i < 3; i++) {
     if (SDL_RenderCopy(renderer, trumpet->keys_text, NULL, keys[i])) {
@@ -423,7 +427,7 @@ void Game_HandleKeyDown(SDL_Event event, Game_Trumpet *trumpet) {
 /* void Game_HandleKeyUp(Game_Trumpet *trumpet)
  *
  * Handles SDL_KEYUP events. */
-void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet) {         
+void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet) {
   switch (event.key.keysym.scancode) {
   case SDL_SCANCODE_LEFT:
     if (trumpet->key_1_pressed) {
