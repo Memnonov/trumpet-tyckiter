@@ -12,4 +12,4 @@ A real trumpet player will know what to do...
 Need to play higher notes? Practice harder.  
 
 requires SDL2, SDL2_image and SDL2_mixer.
-cmake works on Arch at least.
+The cmake thing works on Arch at least.
