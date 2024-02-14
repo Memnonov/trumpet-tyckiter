@@ -1,4 +1,7 @@
-/* Copyright [2024] Mikko Memonen */
+/* Copyright [2024] Mikko Memonen 
+ * 
+ * A goofy little trumpet simulator for fun and practice.
+ * Works EXACTLY like a real one. */
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_audio.h>
