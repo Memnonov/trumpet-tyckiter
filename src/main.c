@@ -1,20 +1,14 @@
-/* Copyright [2024] Mikko Memonen 
- * 
+/* Copyright [2024] Mikko Memonen
+ *
  * A goofy little trumpet simulator for fun and practice.
  * Works EXACTLY like a real one. */
 
+// SDL2 libraries
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_error.h>
-#include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
-#include <SDL2/SDL_rect.h>
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_scancode.h>
-#include <SDL2/SDL_stdinc.h>
-#include <SDL2/SDL_timer.h>
-#include <SDL2/SDL_video.h>
+// Standard stuff
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,11 +76,9 @@ int main(void) {
   const char *RESOURCES_SOUND_PATH = "resources/sound/";
   const char *TEST_SOUND_F4 = "resources/sound/6.wav";  // for testing
 
-  // Initialize Game.
+  // Initialize Game and the HORN!
   Game game = {
       .SDL_Init = -1, .MIX_Init = -1, .window = NULL, .renderer = NULL};
-
-  // Initialize THE HORN!
   Game_Trumpet trumpet = {.valves_text = NULL,
                           .keys_text = NULL,
                           .key_1_pressed = 0,
@@ -111,7 +103,7 @@ int main(void) {
   if (game.MIX_Init) {
     printf("\nCouldn't open audio device: %s", SDL_GetError());
     // TODO: Have these checks use the Game_QuitAll() function!
-    SDL_Quit();
+    Game_QuitAll(&game, &trumpet, NULL);
     return EXIT_FAILURE;
   }
 
@@ -121,8 +113,7 @@ int main(void) {
                        SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
   if (game.window == NULL) {
     printf("\nCouldn't create window: %s", SDL_GetError());
-    SDL_CloseAudio();
-    SDL_Quit();
+    Game_QuitAll(&game, &trumpet, NULL);
     return EXIT_FAILURE;
   }
 
@@ -130,53 +121,35 @@ int main(void) {
   game.renderer = SDL_CreateRenderer(game.window, -1, RENDERER_FLAGS);
   if (game.renderer == NULL) {
     printf("\nCouldn't create renderer: %s", SDL_GetError());
-    SDL_DestroyWindow(game.window);
-    SDL_CloseAudio();
-    SDL_Quit();
+    Game_QuitAll(&game, &trumpet, NULL);
     return EXIT_FAILURE;
   }
 
   // Create the trumpet valves and keys textures.
-  // SDL_Texture *trumpet_valves_texture = NULL;  // Now in the Game_Trumpet
-  // struct SDL_Texture *trumpet_key_texture = NULL;     // These too
   trumpet.valves_text = IMG_LoadTexture(game.renderer, VALVES_PATH);
   trumpet.keys_text = IMG_LoadTexture(game.renderer, KEY_PATH);
   if (trumpet.valves_text == NULL) {
-    printf("Couldn't load trumpet valves!");
-    SDL_DestroyWindow(game.window);
-    SDL_DestroyRenderer(game.renderer);
-    SDL_CloseAudio();
-    SDL_Quit();
+    Game_QuitAll(&game, &trumpet, NULL);
+    return EXIT_FAILURE;
   }
   if (trumpet.keys_text == NULL) {
     printf("Couldn't load trumpet keys!");
-    SDL_DestroyWindow(game.window);
-    SDL_DestroyRenderer(game.renderer);
-    SDL_DestroyTexture(trumpet.valves_text);
-    SDL_CloseAudio();
-    SDL_Quit();
+    Game_QuitAll(&game, &trumpet, NULL);
+    return EXIT_FAILURE;
   }
-
   Game_PlaceTrumpetKeys(&trumpet);
 
-  // Load a sound effect.
   // Initialize the notes.
-  Game_Audio audio = {.notes[0] = Mix_LoadWAV(TEST_SOUND_F4)};
-  if (audio.notes[0] == NULL) {
-    printf("Couldn't load DOOTs : (  (%s))", SDL_GetError());
-    SDL_DestroyWindow(game.window);
-    SDL_DestroyRenderer(game.renderer);
-    SDL_DestroyTexture(trumpet.keys_text);
-    SDL_DestroyTexture(trumpet.valves_text);
-    SDL_CloseAudio();
-    SDL_Quit();
+  Game_Audio audio;
+  if (Game_LoadNotes(&audio, RESOURCES_SOUND_PATH)) {
+    printf("\nCouldn't load DOOTS :( (%s))", SDL_GetError());
+    Game_QuitAll(&game, &trumpet, NULL);
     return EXIT_FAILURE;
   }
 
-  Game_LoadNotes(&audio, RESOURCES_SOUND_PATH);
-
   unsigned int stop_request = 0;
   const unsigned int valve_press_length = 40;
+  unsigned int error = 0;
   // MAIN LOOP TIME! ------------------------------------
   while (!stop_request) {
     // Process events.
@@ -277,16 +250,16 @@ int main(void) {
     Game_PlayTrumpet(&trumpet, &audio);
 
     // Draw black backgound.
-    SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
-    SDL_RenderClear(game.renderer);
+    error += SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
+    error += SDL_RenderClear(game.renderer);
 
-    // Add textures to buffer.
-    // Keys
-    // TODO: Make this less dumb.
+    // Add textures to buffer and show it.
     Game_DrawTrumpet(&trumpet, game.renderer);
-
-    // Show buffer.
     SDL_RenderPresent(game.renderer);
+
+    if (error) {
+      printf("\nError in the game loop! %s", SDL_GetError());
+    }
 
     // Emulate 60fps
     SDL_Delay(1000 / 60);
@@ -302,44 +275,49 @@ int main(void) {
  *
  * Conveniently closes all initiated SDL2 modules. */
 void Game_QuitAll(Game *game, Game_Trumpet *trumpet, Game_Audio *audio) {
-  // SDL_init       returns 0 if OK (SDL_Quit() deals with this?)
-  // Mix_OpenAudio  returns 0 if OK
-  printf("\nClosing audio...");
-  if (game->MIX_Init == 0) {
-    printf("\n  Audio closed!");
-    SDL_CloseAudio();
+  if (game != NULL) {
+    // Mix_OpenAudio returns 0 if OK
+    printf("\nClosing audio...");
+    if (game->MIX_Init == 0) {
+      printf("\n  Audio closed!");
+      SDL_CloseAudio();
+    }
+
+    // Destroy window and renderer
+    printf("\nDestroying Window...");
+    if (game->window != NULL) {
+      SDL_DestroyWindow(game->window);
+      printf("\n  Window destroyed!");
+    }
+    printf("\nDestroying Renderer...");
+    if (game->renderer != NULL) {
+      SDL_DestroyRenderer(game->renderer);
+      printf("\n  Renderer destroyed!");
+    }
   }
 
-  // Destroy window and renderer
-  printf("\nDestroying Window...");
-  if (game->window != NULL) {
-    SDL_DestroyWindow(game->window);
-    printf("\n  Window destroyed!");
-  }
-  printf("\nDestroying Renderer...");
-  if (game->renderer != NULL) {
-    SDL_DestroyRenderer(game->renderer);
-    printf("\n  Renderer destroyed!");
-  }
-
-  // Game_Trumpet has pointers to valves_text and keys_text
-  printf("\nDestroying keys...");
-  if (trumpet->keys_text != NULL) {
-    SDL_DestroyTexture(trumpet->keys_text);
-    printf("\n  Keys destroyed!");
-  }
-  printf("\nDestroying valves...");
-  if (trumpet->valves_text != NULL) {
-    SDL_DestroyTexture(trumpet->valves_text);
-    printf("\n  Valves destroyed!");
+  if (trumpet != NULL) {
+    // Game_Trumpet has pointers to valves_text and keys_text
+    printf("\nDestroying keys...");
+    if (trumpet->keys_text != NULL) {
+      SDL_DestroyTexture(trumpet->keys_text);
+      printf("\n  Keys destroyed!");
+    }
+    printf("\nDestroying valves...");
+    if (trumpet->valves_text != NULL) {
+      SDL_DestroyTexture(trumpet->valves_text);
+      printf("\n  Valves destroyed!");
+    }
   }
 
-  // TODO: Fix magic number 19!
-  printf("\nFreeing Mix Chunks..");
-  for (int i = 0; i < 19; i++) {
-    if (audio->notes[i] != NULL) {
-      Mix_FreeChunk(audio->notes[i]);
-      printf("\n  Freed chunk %d", i);
+  if (audio != NULL) {
+    // TODO: Fix magic number 19!
+    printf("\nFreeing Mix Chunks..");
+    for (int i = 0; i < 19; i++) {
+      if (audio->notes[i] != NULL) {
+        Mix_FreeChunk(audio->notes[i]);
+        printf("\n  Freed chunk %d", i);
+      }
     }
   }
 
