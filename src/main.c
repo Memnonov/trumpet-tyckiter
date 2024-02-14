@@ -6,6 +6,7 @@
 // SDL2 libraries
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
+#include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 // Standard stuff
@@ -61,7 +62,12 @@ int Game_CheckIfPlaying(Game_Trumpet *trumpet);
 // Draw the keys in their places.
 void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer);
 
-// Main function!
+// Handle key down events
+void Game_HandleKeyDown(SDL_Event event, Game_Trumpet *trumpet);
+
+// Handle key up events
+void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet);
+
 int main(void) {
   // MY CONSTANTS
   const Uint32 INIT_FLAGS =
@@ -148,9 +154,10 @@ int main(void) {
   }
 
   unsigned int stop_request = 0;
-  const unsigned int valve_press_length = 40;
   unsigned int error = 0;
-  // MAIN LOOP TIME! ------------------------------------
+  const unsigned int valve_press_length = 40;
+
+  // Main game loop starts.
   while (!stop_request) {
     // Process events.
     SDL_Event event;
@@ -159,97 +166,19 @@ int main(void) {
       case SDL_QUIT:
         stop_request = 1;
         break;
-
-      // KEYDOWN switch
       case SDL_KEYDOWN:
-        switch (event.key.keysym.scancode) {
-        case SDL_SCANCODE_LEFT:
-          if (!trumpet.key_1_pressed) {  // TODO: Is this checking necessary?
-            trumpet.key_1_rect.y += valve_press_length;
-            trumpet.key_1_pressed = 1;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_DOWN:
-          if (!trumpet.key_2_pressed) {
-            trumpet.key_2_rect.y += valve_press_length;
-            trumpet.key_2_pressed = 1;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_RIGHT:
-          if (!trumpet.key_3_pressed) {
-            trumpet.key_3_rect.y += valve_press_length;
-            trumpet.key_3_pressed = 1;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_A:
-          if (!trumpet.key_a_pressed) {
-            trumpet.key_a_pressed = 1;
-            trumpet.blow_force = 6;
-            trumpet.doot = 1;
-          }
-          break;
-        case SDL_SCANCODE_S:
-          if (!trumpet.key_s_pressed) {
-            trumpet.key_s_pressed = 1;
-            trumpet.blow_force = 13;
-            trumpet.doot = 1;
-          }
-          break;
-        case SDL_SCANCODE_D:
-          if (!trumpet.key_d_pressed) {
-            trumpet.key_d_pressed = 1;
-            trumpet.blow_force = 18;
-            trumpet.doot = 1;
-          }
-          break;
-        }
+        Game_HandleKeyDown(event, &trumpet);
         break;
-      // KEYUP switch
       case SDL_KEYUP:
-        switch (event.key.keysym.scancode) {
-        case SDL_SCANCODE_LEFT:
-          if (trumpet.key_1_pressed) {
-            trumpet.key_1_rect.y -= valve_press_length;
-            trumpet.key_1_pressed = 0;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_DOWN:
-          if (trumpet.key_2_pressed) {
-            trumpet.key_2_rect.y -= valve_press_length;
-            trumpet.key_2_pressed = 0;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_RIGHT:
-          if (trumpet.key_3_pressed) {
-            trumpet.key_3_rect.y -= valve_press_length;
-            trumpet.key_3_pressed = 0;
-            trumpet.doot = Game_CheckIfPlaying(&trumpet);
-          }
-          break;
-        case SDL_SCANCODE_A:
-          trumpet.key_a_pressed = 0;
-          break;
-        case SDL_SCANCODE_S:
-          trumpet.key_s_pressed = 0;
-          break;
-        case SDL_SCANCODE_D:
-          trumpet.key_d_pressed = 0;
-          break;
-        }
+        Game_HandleKeyUp(event, &trumpet);
         break;
       }
     }
-    // End of event loop.
 
-    // Handle the music.
+    // Handle the notes.
     Game_PlayTrumpet(&trumpet, &audio);
 
-    // Draw black backgound.
+    // Draw a black backgound.
     error += SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
     error += SDL_RenderClear(game.renderer);
 
@@ -263,8 +192,9 @@ int main(void) {
       return EXIT_FAILURE;
     }
 
-    // Emulate 60fps
-    SDL_Delay(1000 / 60);
+    // Emulate fps
+    // 60? 140? More frames, more responsive?
+    SDL_Delay(1000 / 140);
   }
 
   Game_QuitAll(&game, &trumpet, &audio);
@@ -434,5 +364,97 @@ void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer) {
     ) {
       printf("Error copying valves: %s", SDL_GetError());
     }
+  }
+}
+
+/* void Game_HandleKeyDown(Game_Trumpet *trumpet)
+ *
+ * Handles SDL_KEYDOWN events. */
+void Game_HandleKeyDown(SDL_Event event, Game_Trumpet *trumpet) {
+  const unsigned int valve_press_length = 40;
+  switch (event.key.keysym.scancode) {
+  case SDL_SCANCODE_LEFT:
+    if (!trumpet->key_1_pressed) {  // TODO: Is this checking necessary?
+      trumpet->key_1_rect.y += valve_press_length;
+      trumpet->key_1_pressed = 1;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_DOWN:
+    if (!trumpet->key_2_pressed) {
+      trumpet->key_2_rect.y += valve_press_length;
+      trumpet->key_2_pressed = 1;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_RIGHT:
+    if (!trumpet->key_3_pressed) {
+      trumpet->key_3_rect.y += valve_press_length;
+      trumpet->key_3_pressed = 1;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_A:
+    if (!trumpet->key_a_pressed) {
+      trumpet->key_a_pressed = 1;
+      trumpet->blow_force = 6;
+      trumpet->doot = 1;
+    }
+    break;
+  case SDL_SCANCODE_S:
+    if (!trumpet->key_s_pressed) {
+      trumpet->key_s_pressed = 1;
+      trumpet->blow_force = 13;
+      trumpet->doot = 1;
+    }
+    break;
+  case SDL_SCANCODE_D:
+    if (!trumpet->key_d_pressed) {
+      trumpet->key_d_pressed = 1;
+      trumpet->blow_force = 18;
+      trumpet->doot = 1;
+    }
+    break;
+  default:
+    printf("\nDOOT DOOT!");
+  }
+}
+
+/* void Game_HandleKeyUp(Game_Trumpet *trumpet)
+ *
+ * Handles SDL_KEYUP events. */
+void Game_HandleKeyUp(SDL_Event event, Game_Trumpet *trumpet) {
+  const unsigned int valve_press_length = 40;
+  switch (event.key.keysym.scancode) {
+  case SDL_SCANCODE_LEFT:
+    if (trumpet->key_1_pressed) {
+      trumpet->key_1_rect.y -= valve_press_length;
+      trumpet->key_1_pressed = 0;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_DOWN:
+    if (trumpet->key_2_pressed) {
+      trumpet->key_2_rect.y -= valve_press_length;
+      trumpet->key_2_pressed = 0;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_RIGHT:
+    if (trumpet->key_3_pressed) {
+      trumpet->key_3_rect.y -= valve_press_length;
+      trumpet->key_3_pressed = 0;
+      trumpet->doot = Game_CheckIfPlaying(trumpet);
+    }
+    break;
+  case SDL_SCANCODE_A:
+    trumpet->key_a_pressed = 0;
+    break;
+  case SDL_SCANCODE_S:
+    trumpet->key_s_pressed = 0;
+    break;
+  case SDL_SCANCODE_D:
+    trumpet->key_d_pressed = 0;
+    break;
   }
 }
