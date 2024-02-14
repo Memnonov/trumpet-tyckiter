@@ -61,6 +61,9 @@ void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio);
 // Check if a note is playing.
 int Game_CheckIfPlaying(Game_Trumpet *trumpet);
 
+// Draw the keys in their places.
+void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer);
+
 // Main function!
 int main(void) {
   // MY CONSTANTS
@@ -221,9 +224,9 @@ int main(void) {
           break;
         case SDL_SCANCODE_D:
           if (!trumpet.key_d_pressed) {
-          trumpet.key_d_pressed = 1;
-          trumpet.blow_force = 18;
-          trumpet.doot = 1;
+            trumpet.key_d_pressed = 1;
+            trumpet.blow_force = 18;
+            trumpet.doot = 1;
           }
           break;
         }
@@ -277,31 +280,7 @@ int main(void) {
     // Add textures to buffer.
     // Keys
     // TODO: Make this less dumb.
-    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
-                       NULL,                 // use the whole image as source
-                       &trumpet.key_1_rect)  // stretch to fit the whole window
-    ) {
-      printf("Error copying keys: %s", SDL_GetError());
-    }
-    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
-                       NULL,                 // use the whole image as source
-                       &trumpet.key_2_rect)  // stretch to fit the whole window
-    ) {
-      printf("Error copying keys: %s", SDL_GetError());
-    }
-    if (SDL_RenderCopy(game.renderer, trumpet.keys_text,
-                       NULL,                 // use the whole image as source
-                       &trumpet.key_3_rect)  // stretch to fit the whole window
-    ) {
-      printf("Error copying keys: %s", SDL_GetError());
-    }
-    // Valves
-    if (SDL_RenderCopy(game.renderer, trumpet.valves_text,
-                       NULL,  // use the whole image as source
-                       NULL)  // stretch to fit the whole window
-    ) {
-      printf("Error copying valves: %s", SDL_GetError());
-    }
+    Game_DrawTrumpet(&trumpet, game.renderer);
 
     // Show buffer.
     SDL_RenderPresent(game.renderer);
@@ -426,17 +405,18 @@ int Game_LoadNotes(Game_Audio *audio, const char *path) {
  * Returns 1 if a note should be playing (a, s or d pressed)
  * Used for slurring notes (changing fingering while playing a note) */
 int Game_CheckIfPlaying(Game_Trumpet *trumpet) {
-  if (trumpet->key_a_pressed + trumpet->key_s_pressed + trumpet->key_d_pressed) {
+  if (trumpet->key_a_pressed + trumpet->key_s_pressed +
+      trumpet->key_d_pressed) {
     return 1;
   }
   return 0;
 }
 
-
 /* void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio)
  *
  * Handles the playing and stopping notes depenging on the
- * trumpet state. */
+ * trumpet state. Playing works pretty much just like a REAL trumpet.
+ * (This is a C trumpet, btw.) */
 void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio) {
   if (trumpet->key_a_pressed + trumpet->key_s_pressed +
           trumpet->key_d_pressed ==
@@ -449,5 +429,27 @@ void Game_PlayTrumpet(Game_Trumpet *trumpet, Game_Audio *audio) {
                trumpet->key_2_pressed - trumpet->key_3_pressed * 3;
     Mix_FadeInChannel(1, audio->notes[note], 0, 1);
     trumpet->doot = 0;
+  }
+}
+
+/* void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer)
+ *
+ * Draw the trumpet parts in their rightful places */
+void Game_DrawTrumpet(Game_Trumpet *trumpet, SDL_Renderer *renderer) {
+  // Keys
+  SDL_Rect *keys[3] = {&trumpet->key_1_rect, &trumpet->key_2_rect,
+                      &trumpet->key_3_rect};
+
+  for (int i = 0; i < 3; i++) {
+    if (SDL_RenderCopy(renderer, trumpet->keys_text, NULL, keys[i])) {
+      printf("Error copying keys: %s", SDL_GetError());
+    }
+    // Valves
+    if (SDL_RenderCopy(renderer, trumpet->valves_text,
+                       NULL,  // use the whole image as source
+                       NULL)  // stretch to fit the whole window
+    ) {
+      printf("Error copying valves: %s", SDL_GetError());
+    }
   }
 }
