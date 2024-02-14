@@ -259,6 +259,8 @@ int main(void) {
 
     if (error) {
       printf("\nError in the game loop! %s", SDL_GetError());
+      Game_QuitAll(&game, &trumpet, &audio);
+      return EXIT_FAILURE;
     }
 
     // Emulate 60fps
